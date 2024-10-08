@@ -94,7 +94,7 @@ class _MainPage extends State<MainPage> {
       body: Container(
         child: ListView(
           children: <Widget>[
-            Divider(),
+            Divider(),//xi
             ListTile(title: const Text('General')),
             SwitchListTile(
               title: const Text('Enable Bluetooth'),

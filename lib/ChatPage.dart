@@ -38,12 +38,15 @@ class _ChatPage extends State<ChatPage> {
 
   bool isDisconnecting = false;
   String msg = ""; // Declare msg as a class-level variable
-  
+  final serialNumberController = TextEditingController();
+  final itemNameController = TextEditingController();
+  final priceController = TextEditingController();
+  String url = 'http://192.168.88.36:5000/api/item/register-item';
 
   @override
   void initState() {
     super.initState();
-
+    // serialNumberController.addListener(controllerToText);
     BluetoothConnection.toAddress(widget.server.address).then((_connection) {
       print('Connected to the device');
       connection = _connection;
@@ -79,46 +82,96 @@ class _ChatPage extends State<ChatPage> {
     super.dispose();
   }
 
+  // void controllerToText(){
+  //   final serialNumber=serialNumberController;
+  // }
+
   @override
   Widget build(BuildContext context) {
     final serverName = widget.server.name ?? "Unknown";
     return Scaffold(
       appBar: AppBar(
           title: (isConnecting
-              ? Text('Connecting chat to ' + serverName + '...')
+              ? Text('Connecting to ' + serverName + '...')
               : isConnected
                   ? Text('Connected with ' + serverName)
                   : Text('Disconnected with ' + serverName))),
       body: SafeArea(
         child: Column(
           children: <Widget>[
+            // Row(
+            //   mainAxisAlignment: MainAxisAlignment.center,
+            //   children: [Text("received QR: $msg")], // Display the msg variabl
+            // ),
             Row(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Center(
-                  child: Text("received String: $msg"),
-                )
+                Text("received RFID EPC: $part1")
               ], // Display the msg variabl
             ),
+            SizedBox(
+              height: 15,
+            ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text("received SN: $part2")
+              ], // Display the msg variabl
+            ),
+
+            SizedBox(
+              height: 15.0,
+            ),
             Padding(
-              padding: const EdgeInsets.only(top: 20.0),
-              child: Row(
-                children: [
-                  ElevatedButton(
-                      onPressed: () {
-                        String url =
-                            'http://192.168.18.158:5000/api/item/register-item';
-                        Map<String, dynamic> data = {
-                          "serial_number": 25,
-                          "rfid_tag": msg,
-                          "item_name": "25",
-                          "price": 25
-                        };
-                        sendData(url, data);
-                        print(data);
-                      },
-                      child: Text("send data"))
-                ],
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              child: TextField(
+                controller: itemNameController,
+                decoration: InputDecoration(
+                    label: Text("Item Name"),
+                    border: OutlineInputBorder(),
+                    hintText: "Input Item Name",
+                    hintStyle: TextStyle(
+                      color: Colors.grey,
+                    )),
               ),
+            ),
+
+            SizedBox(
+              height: 15.0,
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              child: TextField(
+                controller: priceController,
+                decoration: InputDecoration(
+                    label: Text("Price"),
+                    border: OutlineInputBorder(),
+                    hintText: "Input Price",
+                    hintStyle: TextStyle(
+                      color: Colors.grey,
+                    )),
+              ),
+            ),
+
+            SizedBox(
+              height: 15.0,
+            ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                ElevatedButton(
+                    onPressed: () {
+                      Map<String, dynamic> data = {
+                        "serial_number": part2,
+                        "rfid_tag": part1,
+                        "item_name": itemNameController.text,
+                        "price": int.parse(priceController.text),
+                      };
+                      sendData(url, data);
+                      clearController();
+                    },
+                    child: Text("Send data"))
+              ],
             )
           ],
         ),
@@ -126,13 +179,19 @@ class _ChatPage extends State<ChatPage> {
     );
   }
 
+  String part1 = '';
+  String part2 = '';
+  void clearController() {
+    serialNumberController.clear();
+    itemNameController.clear();
+    priceController.clear();
+  }
+
   Future<void> sendData(String url, Map<String, dynamic> data) async {
-    
     try {
       // Convert the data map to a JSON string
-      print("skjd");
       String jsonData = jsonEncode(data);
-      print (jsonData);
+      print(jsonData);
       // Send the POST request
       final response = await http.post(
         Uri.parse(url),
@@ -146,7 +205,7 @@ class _ChatPage extends State<ChatPage> {
       // Check the response status code
       if (response.statusCode >= 200 && response.statusCode <= 299) {
         print('Request successful');
-        
+
         print('Response body: ${response.body}');
       } else {
         print('Request failed with status: ${response.statusCode}');
@@ -188,7 +247,15 @@ class _ChatPage extends State<ChatPage> {
                 0, _messageBuffer.length - backspacesCounter)
             : _messageBuffer + dataString.substring(0, index);
         _messageBuffer = dataString.substring(index);
-        msg=msg.trim();
+        msg = msg.trim();
+        List<String> parts = msg.split(',');
+        if (parts.length != 2) {
+          print("Invalid msg format");
+          return;
+        }
+
+        part1 = parts[0].trim();
+        part2 = parts[1].trim();
       });
     } else {
       _messageBuffer = (backspacesCounter > 0
